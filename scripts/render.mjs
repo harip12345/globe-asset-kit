@@ -22,8 +22,8 @@ const width=Number(option('width',c.width)),height=Number(option('height',c.heig
 for(const [n,v,min,max] of [['width',width,64,4096],['height',height,64,4096],['fps',fps,1,60],['seconds',seconds,.01,120]])if(!Number.isFinite(v)||v<min||v>max)throw new Error(`Invalid ${n}`);
 if(!Number.isInteger(width)||!Number.isInteger(height))throw new Error('Dimensions must be integers.');
 const server=createServer();await new Promise(r=>server.listen(0,'127.0.0.1',r));
-const port=server.address().port;let browser;
-const faults=[];
+const port=server.address().port;let browser,encoder;
+const faults=[],warnings=[],imageryReport={fallbackFrames:0,maxFailedTiles:0};
 try{
   let executablePath=process.env.GLOBE_CHROMIUM_PATH;
   if(!executablePath&&!existsSync(playwright.chromium.executablePath())){
@@ -33,7 +33,7 @@ try{
   }
   browser=await playwright.chromium.launch({headless:true,executablePath,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
   const page=await browser.newPage({viewport:{width,height},deviceScaleFactor:1});
-  page.on('pageerror',e=>faults.push(e.message));page.on('console',m=>{if(m.type()==='error')faults.push(m.text());});
+  page.on('pageerror',e=>faults.push(e.message));page.on('console',m=>{if(m.type()==='error'){const imagery=/^https:\/\/(services|server)\.arcgisonline\.com\//.test(m.location().url??'');(imagery?warnings:faults).push(m.text());}});
   await page.goto(`http://127.0.0.1:${port}/?render=1&width=${width}&height=${height}`);
   await page.waitForFunction(()=>window.__GLOBE_READY__===true,null,{timeout:60000});
   c.width=width;c.height=height;c.fps=fps;if(args.includes('--transparent'))c.transparent=true;
@@ -41,7 +41,10 @@ try{
   if(format==='mp4'&&c.transparent)throw new Error('MP4/H.264 has no alpha channel. Use PNG or frames for transparency.');
   if(format==='mp4'&&(width%2||height%2))throw new Error('MP4 width and height must be even.');
   await page.evaluate(async config=>{await window.globeKit.applyConfig(config);window.globeKit.resize(config.width,config.height);},c);
-  async function frame(t){return await page.evaluate(async time=>{await window.globeKit.prepareFrame(time);return window.globeKit.exportPNG().split(',')[1];},t);}
+  async function frame(t){
+    const result=await page.evaluate(async time=>{await window.globeKit.prepareFrame(time);const kit=window.globeKit;return {png:kit.exportPNG().split(',')[1],failedTiles:kit.detailLayer.high.filter(key=>kit.detailLayer.cache.get(key)?.state==='error').length};},t);
+    if(result.failedTiles)imageryReport.fallbackFrames++;imageryReport.maxFailedTiles=Math.max(imageryReport.maxFailedTiles,result.failedTiles);return result.png;
+  }
   await mkdir(path.dirname(out),{recursive:true});
   if(format==='png'){
     const time=Number(option('time','0'));if(!Number.isFinite(time)||time<0)throw new Error('Invalid --time');
@@ -53,6 +56,7 @@ try{
   }else{
     const ffmpeg=process.env.FFMPEG_PATH||'ffmpeg';
     const enc=spawn(ffmpeg,['-hide_banner','-loglevel','error','-y','-f','image2pipe','-framerate',String(fps),'-i','pipe:0','-an','-c:v','libx264','-crf','18','-preset','fast','-pix_fmt','yuv420p','-movflags','+faststart',out],{windowsHide:true});
+    encoder=enc;
     let log='',pipeError;enc.stderr.on('data',d=>log+=d);enc.stdin.on('error',e=>pipeError=e);
     const closed=new Promise((resolve,reject)=>{enc.on('close',code=>code===0?resolve():reject(new Error(`FFmpeg: ${log||pipeError?.message||code}`)));enc.on('error',reject);});
     // Attach rejection handler immediately while frames are generated.
@@ -66,5 +70,7 @@ try{
     enc.stdin.end();await closed;console.log(`MP4: ${out}`);
   }
   if(faults.length)throw new Error(`Browser errors: ${faults.join('\n')}`);
-  await writeFile(out+'.render.json',JSON.stringify({scene:path.relative(root,sceneFile),width,height,fps,duration:format==='png'?null:seconds,transparent:c.transparent,time:format==='png'?Number(option('time','0')):null,config:c},null,2));
-}finally{if(browser)await browser.close();await new Promise(r=>server.close(r));}
+  const detail=await page.evaluate(()=>({status:window.globeKit.detailLayer.status,failureMode:window.globeKit.config.detail.failureMode}));
+  const config=await page.evaluate(()=>window.globeKit.getConfig());
+  await writeFile(out+'.render.json',JSON.stringify({scene:path.relative(root,sceneFile),width,height,fps,duration:format==='png'?null:seconds,transparent:c.transparent,time:format==='png'?Number(option('time','0')):null,detail:{...detail,...imageryReport},warnings:[...new Set(warnings)],config},null,2));
+}finally{if(encoder&&encoder.exitCode===null){encoder.stdin.destroy();encoder.kill();}if(browser)await browser.close();await new Promise(r=>server.close(r));}

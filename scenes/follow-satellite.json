@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "name": "Lintas Pasifik — Kamera mengikuti satelit",
+  "duration": 24,
+  "fps": 30,
+  "width": 1080,
+  "height": 1920,
+  "background": "#03080e",
+  "transparent": false,
+  "texture": "assets/textures/earth-nasa-5400.jpg",
+  "style": {"exposure": 1.2, "saturation": 0.9, "ocean": "#25558b", "oceanMix": 0.55, "fill": 0.65, "atmosphere": "#5aa9ff", "halo": 0.75},
+  "detail": {"enabled": false, "maxLevel": 18, "failureMode": "strict"},
+  "camera": {
+    "lat": 20, "lon": -165, "zoom": 1, "roll": 0, "keyframes": [],
+    "follow": {
+      "object": "pelacak", "distanceKm": 8000, "pitch": 30, "heading": "route", "lookAheadSeconds": 0,
+      "keyframes": [
+        {"time": 0, "distanceKm": 8000, "pitch": 25},
+        {"time": 12, "distanceKm": 1800, "pitch": 45},
+        {"time": 24, "distanceKm": 3500, "pitch": 30}
+      ]
+    }
+  },
+  "labels": [{"text": "ALASKA", "lat": 60, "lon": -150, "color": "#ffffff"}, {"text": "SELANDIA BARU", "lat": -37, "lon": 175, "color": "#ffffff"}],
+  "routes": [{"id": "pasifik", "from": [60, -150], "to": [-37, 175], "color": "#ff755a", "start": 0, "end": 24, "altitude": 0.06, "width": 0.0012}],
+  "objects": [{"id": "pelacak", "type": "satellite", "altitude": 0.06, "scale": 0.02, "screenSize": 0.22, "followRoute": {"route": "pasifik", "easing": "linear", "orient": true}}],
+  "title": "",
+  "subtitle": ""
+}

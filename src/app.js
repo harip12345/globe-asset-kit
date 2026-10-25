@@ -1,5 +1,5 @@
 import {GlobeKit} from './globe.js';
-import {PRESETS,validateConfig} from './config.js';
+import {PRESETS,HANDOFF_SCENES,validateConfig,retimeScene} from './config.js';
 import {syncAdvanced,installAdvanced} from './controls.js';
 const $=id=>document.getElementById(id),params=new URLSearchParams(location.search),renderMode=params.get('render')==='1';
 let kit,preset=PRESETS.includes(params.get('scene'))?params.get('scene'):'pasifik',playing=false,last=0,loadVersion=0;
@@ -27,17 +27,18 @@ function sync(){
   const cam=kit.getCamera();for(const input of document.querySelectorAll('[data-camera]')){const key=input.dataset.camera;let value=cam[key];if(key==='lon')value=((value+540)%360)-180;input.value=value;$(key+'-value').textContent=Number(value).toFixed(2);}
   $('background').value=c.background;$('transparent').checked=c.transparent;$('title').value=c.title;$('subtitle').value=c.subtitle;
   $('labels').value=c.labels.map(l=>`${l.text} | ${l.lat} | ${l.lon}`).join('\n');
-  $('keyframe-info').textContent=c.camera.keyframes.length?`${c.camera.keyframes.length} keyframe · ${c.duration} detik · transisi halus`:'Kamera statis · siap dibuat animasi';
+  $('keyframe-info').textContent=c.camera.follow?`Mengikuti subjek · ${c.camera.follow.keyframes.length} keyframe jarak · ${c.duration} detik`:c.camera.keyframes.length?`${c.camera.keyframes.length} keyframe · ${c.duration} detik · transisi halus`:'Kamera statis · siap dibuat animasi';
   $('format').value=`${c.width}x${c.height}`;
-  $('object').value=c.objects.length?(c.objects[0].type==='glb'?'custom':c.objects[0].type):'none';
+  $('object').value=c.objects.length?(['glb','sprite','bird'].includes(c.objects[0].type)?'custom':c.objects[0].type):'none';
   for(const b of document.querySelectorAll('[data-preset]')){const active=b.dataset.preset===preset;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));}
+  $('handoff-scene').value=HANDOFF_SCENES.includes(preset)?preset:'';
   syncAdvanced(kit);
   updateTime();resize();$('status').textContent='Aset siap · tersimpan lokal';
 }
 async function apply(c){playing=false;$('play').textContent='▶';$('play').setAttribute('aria-label','Putar animasi');if(await kit.applyConfig(c))sync();}
 async function loadPreset(name){
   const version=++loadVersion;$('loading').hidden=false;
-  try{const res=await fetch(`scenes/${name}.json`);if(!res.ok)throw new Error('Scene tidak dapat dimuat.');const c=await res.json();if(version!==loadVersion)return;preset=name;await apply(c);}
+  try{const res=await fetch(`scenes/${name}.json`);if(!res.ok)throw new Error('Scene tidak dapat dimuat.');const c=await res.json();if(version!==loadVersion)return;preset=name;await apply(c);if(version===loadVersion){kit.setTime(0);updateTime();}}
   finally{if(version===loadVersion)$('loading').hidden=true;}
 }
 function mutate(change){try{const c=kit.getConfig();change(c);const valid=validateConfig(c);kit.config=valid;kit.render();$('status').textContent='Perubahan belum diekspor';return true;}catch(e){error(e);return false;}}
@@ -55,6 +56,9 @@ try{
 }catch(e){error(e);$('loading').textContent='Tidak dapat memuat globe. Buka melalui start.cmd atau npm start.';document.body.dataset.error=e.message;}
 if(kit?.config&&!renderMode){
   installAdvanced({kit,apply,mutate,cameraChange,sync,stop,error});
+  $('handoff-scene').replaceChildren(new Option('Pilih beat godwit asli…',''),...HANDOFF_SCENES.map((name,i)=>new Option(`${i+1}. ${name}`,name)));
+  $('handoff-scene').value=HANDOFF_SCENES.includes(preset)?preset:'';
+  $('handoff-scene').addEventListener('change',()=>{if($('handoff-scene').value)loadPreset($('handoff-scene').value).catch(error);});
   for(const b of document.querySelectorAll('[data-preset]'))b.addEventListener('click',()=>loadPreset(b.dataset.preset).catch(error));
   for(const b of document.querySelectorAll('[role=tab]'))b.addEventListener('click',()=>{for(const x of document.querySelectorAll('[role=tab]')){const active=x===b;x.setAttribute('aria-selected',String(active));$(x.getAttribute('aria-controls')).hidden=!active;}});
   for(const input of document.querySelectorAll('[data-style]'))input.addEventListener('input',()=>{
@@ -70,8 +74,8 @@ if(kit?.config&&!renderMode){
   $('transparent').addEventListener('change',()=>{mutate(c=>c.transparent=$('transparent').checked);resize();});
   for(const key of ['title','subtitle'])$(key).addEventListener('input',()=>mutate(c=>c[key]=$(key).value));
   $('apply-labels').addEventListener('click',()=>{mutate(c=>{c.labels=$('labels').value.split('\n').filter(x=>x.trim()).map(row=>{const parts=row.split('|').map(x=>x.trim());if(parts.length!==3||!parts[1]||!parts[2])throw new Error('Format label: NAMA | latitude | longitude');return {text:parts[0],lat:Number(parts[1]),lon:Number(parts[2]),color:'#ffffff'};});});});
-  $('object').addEventListener('change',async()=>{const c=kit.getConfig(),type=$('object').value;const cam=kit.getCamera();c.objects=type==='none'?[]:[{type,lat:cam.lat,lon:cam.lon,altitude:type==='satellite'?.32:.025,scale:type==='satellite'?.10:.065,orbitSpeed:type==='satellite'?8:0,inclination:type==='satellite'?20:0}];try{await apply(c);}catch(e){error(e);sync();}});
-  $('animate-camera').addEventListener('click',()=>{stop();const cam=kit.getCamera();mutate(c=>{c.duration=12;const step=cam.altitudeKm!==undefined?Math.min(16,cam.altitudeKm/111*.16):16;c.camera.keyframes=[{...cam,time:0},{...cam,time:12,lon:cam.lon+step}];c.animationPreset='orbit';});kit.setTime(0);sync();});
+  $('object').addEventListener('change',async()=>{const c=kit.getConfig(),type=$('object').value;const cam=kit.getCamera();delete c.camera.follow;c.objects=type==='none'?[]:[{type,lat:cam.lat,lon:cam.lon,altitude:type==='satellite'?.32:.025,scale:type==='satellite'?.10:.065,orbitSpeed:type==='satellite'?8:0,inclination:type==='satellite'?20:0}];try{await apply(c);}catch(e){error(e);sync();}});
+  $('animate-camera').addEventListener('click',()=>{stop();const cam=kit.getCamera();mutate(c=>{retimeScene(c,12);const step=cam.altitudeKm!==undefined?Math.min(16,cam.altitudeKm/111*.16):16;c.camera={...cam,keyframes:[{...cam,time:0},{...cam,time:12,lon:cam.lon+step}]};c.animationPreset='orbit';});kit.setTime(0);sync();});
   $('format').addEventListener('change',()=>{const [w,h]=$('format').value.split('x').map(Number);mutate(c=>{c.width=w;c.height=h;});resize();});
   $('play').addEventListener('click',()=>{if(kit.time>=kit.config.duration)kit.setTime(0);playing=!playing;last=performance.now();$('play').textContent=playing?'Ⅱ':'▶';$('play').setAttribute('aria-label',playing?'Jeda animasi':'Putar animasi');});
   $('timeline').addEventListener('input',()=>{stop();kit.setTime(Number($('timeline').value));updateTime();});

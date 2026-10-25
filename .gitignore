@@ -6,3 +6,5 @@ analysis-frames/
 .env
 .env.*
 !.env.example
+v2/source/
+incoming/

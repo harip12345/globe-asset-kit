@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "name": "Bali–Lombok — Ikuti kapal (ilustrasi)",
+  "duration": 16,
+  "fps": 30,
+  "width": 1080,
+  "height": 1920,
+  "background": "#03080e",
+  "transparent": false,
+  "texture": "assets/textures/earth-nasa-5400.jpg",
+  "style": {"exposure": 1.2, "saturation": 0.9, "ocean": "#25558b", "oceanMix": 0.55, "fill": 0.65, "atmosphere": "#5aa9ff", "halo": 0.75},
+  "detail": {"enabled": true, "maxLevel": 18, "failureMode": "strict"},
+  "camera": {
+    "lat": -8.7, "lon": 115.3, "zoom": 1, "roll": 0, "keyframes": [],
+    "follow": {
+      "object": "kapal", "distanceKm": 120, "pitch": 30, "heading": "route", "lookAheadSeconds": 0,
+      "keyframes": [
+        {"time": 0, "distanceKm": 120, "pitch": 25},
+        {"time": 8, "distanceKm": 45, "pitch": 40},
+        {"time": 16, "distanceKm": 75, "pitch": 30}
+      ]
+    }
+  },
+  "labels": [
+    {"text": "SANUR, BALI", "lat": -8.704, "lon": 115.265, "color": "#ffffff"},
+    {"text": "LOMBOK", "lat": -8.64, "lon": 116.08, "color": "#ffffff"}
+  ],
+  "routes": [{"id": "bali-lombok", "from": [-8.704, 115.265], "to": [-8.64, 116.08], "color": "#ffce70", "start": 0, "end": 16, "altitude": 0.00012, "width": 0.000012}],
+  "objects": [{"id": "kapal", "type": "ship", "altitude": 0.00012, "scale": 0.0003, "screenSize": 0.16, "followRoute": {"route": "bali-lombok", "orient": true, "easing": "linear"}}],
+  "title": "",
+  "subtitle": ""
+}

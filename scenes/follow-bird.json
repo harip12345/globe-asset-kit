@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "name": "Godwit — Perjalanan dengan kamera follow",
+  "duration": 24,
+  "fps": 30,
+  "width": 1080,
+  "height": 1920,
+  "background": "#03080e",
+  "transparent": false,
+  "texture": "assets/textures/earth-nasa-5400.jpg",
+  "style": {"exposure": 1.2, "saturation": 0.9, "ocean": "#25558b", "oceanMix": 0.55, "fill": 0.65, "atmosphere": "#5aa9ff", "halo": 0.75},
+  "camera": {
+    "lat": 20, "lon": 180, "zoom": 1, "roll": 0, "keyframes": [],
+    "follow": {
+      "object": "godwit", "distanceKm": 8000, "pitch": 25, "heading": "route", "lookAheadSeconds": 0,
+      "keyframes": [
+        {"time": 0, "distanceKm": 8000, "pitch": 25},
+        {"time": 8, "distanceKm": 2200, "pitch": 35},
+        {"time": 16, "distanceKm": 3500, "pitch": 30},
+        {"time": 24, "distanceKm": 6000, "pitch": 25}
+      ]
+    }
+  },
+  "labels": [{"text": "KUSKOKWIM DELTA", "lat": 60.3, "lon": -162, "color": "#ffffff"}, {"text": "TASMANIA", "lat": -42, "lon": 147.3, "color": "#ffffff"}],
+  "routes": [{"id": "migrasi", "from": [60.3, -162], "to": [-42, 147.3], "color": "#ff755a", "start": 0, "end": 24, "altitude": 0.03, "width": 0.0012}],
+  "objects": [{"id": "godwit", "type": "bird", "frames": ["assets/bird-tag-up.png", "assets/bird-tag-down.png"], "frameRate": 9, "scale": 0.07, "screenSize": 0.3, "followRoute": {"route": "migrasi", "easing": "linear", "orient": true}}],
+  "title": "",
+  "subtitle": ""
+}

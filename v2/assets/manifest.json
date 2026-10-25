@@ -1,0 +1,9 @@
+{
+  "source":"Natural Earth",
+  "license":"Public domain",
+  "terms":"https://www.naturalearthdata.com/about/terms-of-use/",
+  "world":{"file":"world-land.png","width":2048,"height":1024,"channels":1,"bounds":[-180,-90,180,90],"sourceScale":"1:50 million","source":"https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_land.geojson","bytes":25663},
+  "indonesia":{"file":"indonesia-land.png","width":4096,"height":2048,"channels":1,"bounds":[92,-13,143,9],"sourceScale":"1:10 million","source":"https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_land.geojson","bytes":59403},
+  "projection":"Equirectangular; PNG rows north to south. GPU upload flips Y.",
+  "note":"Illustrative coastlines; not satellite imagery, street-level detail, or a survey map. Scale names 50m/10m mean 50 million/10 million, not metres."
+}

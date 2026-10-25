@@ -9,9 +9,11 @@ This is a local reusable video-asset project, not a hosted website. The user's p
 - Prefer duplicating a JSON file in scenes/ for a new topic. Keep the reference style intact unless the user requests a visual change.
 - Read docs/README.html for the schema and render commands. Coordinates are [latitude, longitude] in degrees. Altitude uses Earth radii above the surface, not kilometers. The sphere radius is 1.
 - Camera keyframes use seconds and shortest-longitude interpolation. The animation is driven by absolute time. Never replace this with accumulated frame deltas for export.
+- `src/motion.js` provides the shared great-circle curve for routes, GLB/sprite travellers, and camera follow. `objects[].followRoute.route` and `camera.follow.object` accept a unique string ID or a zero-based index. Follow camera settings override manual camera keyframes while enabled. See docs/MOTION.md for the schema, handoff compatibility, and units.
 - Existing web controls are just a convenient editor. Scene JSON is the reusable source of truth. To change the engine, edit src/globe.js; UI: src/app.js, index.html, src/style.css.
 - GLB objects go in assets/models/. Uncompressed GLB is supported. Draco/KTX2 external decoder support is not configured. A realistic turtle asset is NOT included; do not misrepresent the procedural ship/satellite as reference-exact models.
-- Native After Effects, GEOlayers, and VC Orb were not available during creation. Google Earth Studio/Google imagery is not integrated. No coast-level imagery or terrain tiles are included; close globe is NOT a coastal satellite flyover.
+- Native After Effects, GEOlayers, and VC Orb were not available during creation. Google Earth Studio/Google imagery is not integrated. Optional Esri imagery tiles load online for close views; no offline high-resolution imagery or 3D terrain tiles are included. Do not describe the imagery draped on a sphere as a 3D coastal terrain flyover.
+- The supplied bird handoff is integrated through schema normalization, not by reapplying docs/handoff/bird-object.patch. Four two-pose bird sprites and nine original gw-*.json scenes are included. These are illustrative 2D billboards, not rigged animals. Preserve source provenance in assets/manifest.json.
 
 ## Rendering contract
 
@@ -19,6 +21,7 @@ This is a local reusable video-asset project, not a hosted website. The user's p
 - `await window.globeKit.applyConfig(config)` validates and loads all scene assets.
 - `window.globeKit.resize(width,height)` sets exact output pixel dimensions.
 - `window.globeKit.setTime(seconds)` deterministically renders Earth, objects, routes, labels and text.
+- For online detail, call `await window.globeKit.prepareFrame(seconds)` before export. Default `detail.failureMode: "strict"` rejects missing requested tiles. Explicit `"fallback"` allows lower-detail imagery and is recorded in render metadata. Neither mode makes an online service an offline deterministic dataset.
 - `window.globeKit.exportPNG()` returns a PNG data URL. The visible canvas contains both 3D and overlay graphics; no CSS text capture is required.
 - `node scripts/render.mjs --scene scenes/custom.json --format mp4 --out exports/custom.mp4` exports using Playwright and FFmpeg. Use `--format frames --transparent` for alpha. H.264 MP4 has no alpha support.
 - All external tools are optional for the editor, required only for video render. Dependency fallbacks are documented; don't add user-specific paths to core source.

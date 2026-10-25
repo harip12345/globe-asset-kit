@@ -1,0 +1,71 @@
+diff --git a/src/config.js b/src/config.js
+index 752dd39..5dd5fdf 100644
+--- a/src/config.js
++++ b/src/config.js
+@@ -30,7 +30,19 @@ export function validateConfig(raw) {
+   for(const key of ['labels','routes','objects']) if(!Array.isArray(c[key])||c[key].length>100)throw new Error(`${key} harus berupa array, maksimal 100.`);
+   for(const l of c.labels){point([l.lat,l.lon]);if(typeof l.text!=='string'||l.text.length>100)throw new Error('Label maksimal 100 karakter.');color(l.color,'Warna label');}
+   for(const r of c.routes){point(r.from);point(r.to);color(r.color,'Warna rute');finite(r.start,'Awal rute',0,c.duration);finite(r.end,'Akhir rute',0,c.duration);if(r.end<=r.start)throw new Error('Akhir rute harus setelah awal.');finite(r.altitude,'Ketinggian rute',0.005,1);}
+-  for(const o of c.objects){if(!['satellite','ship','glb'].includes(o.type))throw new Error('Tipe objek: satellite, ship, glb.');point([o.lat,o.lon]);finite(o.altitude,'Ketinggian objek',0.01,3);finite(o.scale,'Skala objek',0.001,1);finite(o.orbitSpeed??0,'Kecepatan orbit',-180,180);finite(o.inclination??0,'Inklinasi',-90,90);if(o.type==='glb')localAsset(o.asset);}
++  for(const o of c.objects){
++    if(!['satellite','ship','glb','bird'].includes(o.type))throw new Error('Tipe objek: satellite, ship, glb, bird.');
++    if(o.type==='bird'){
++      point(o.from);point(o.to);
++      finite(o.altitude,'Ketinggian objek',0.005,3);finite(o.scale,'Skala objek',0.001,1);
++      if(o.f0!==undefined)finite(o.f0,'f0',0,1);if(o.f1!==undefined)finite(o.f1,'f1',0,1);
++      if(o.flap!==undefined)finite(o.flap,'Kepakan',0,30);if(o.aspect!==undefined)finite(o.aspect,'Aspek',0.2,6);
++      if(o.start!==undefined)finite(o.start,'Awal objek',0,c.duration);if(o.end!==undefined)finite(o.end,'Akhir objek',0,c.duration);
++      localAsset(o.assetUp);localAsset(o.assetDown);
++      o.lat=o.from[0];o.lon=o.from[1];
++      continue;
++    }
++    point([o.lat,o.lon]);finite(o.altitude,'Ketinggian objek',0.01,3);finite(o.scale,'Skala objek',0.001,1);finite(o.orbitSpeed??0,'Kecepatan orbit',-180,180);finite(o.inclination??0,'Inklinasi',-90,90);if(o.type==='glb')localAsset(o.asset);}
+   for(const k of ['title','subtitle'])if(typeof c[k]!=='string'||c[k].length>200)throw new Error(`${k} maksimal 200 karakter.`);
+   c.detail={enabled:false,maxLevel:18,...c.detail};
+   if(typeof c.detail.enabled!=='boolean')throw new Error('detail.enabled harus true/false.');finite(c.detail.maxLevel,'Detail level',1,18);
+diff --git a/src/globe.js b/src/globe.js
+index de76c7c..af0c76d 100644
+--- a/src/globe.js
++++ b/src/globe.js
+@@ -76,6 +76,13 @@ export class GlobeKit {
+     }
+     const loaded=await Promise.all(c.objects.map(async o=>{
+       if(o.type==='satellite')return makeSatellite();if(o.type==='ship')return makeShip();
++      if(o.type==='bird'){
++        const up=await this.loadTexture(o.assetUp),down=await this.loadTexture(o.assetDown);
++        const mk=t=>new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthWrite:false}));
++        const su=mk(up),sd=mk(down),ar=o.aspect??1.7;
++        su.scale.set(ar,1,1);sd.scale.set(ar,1,1);sd.visible=false;
++        const g=new THREE.Group();g.add(su);g.add(sd);g.userData.birdSprites=[su,sd];return g;
++      }
+       const gltf=await new GLTFLoader().loadAsync(localAsset(o.asset));
+       const box=new THREE.Box3().setFromObject(gltf.scene),center=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());
+       gltf.scene.position.sub(center);const wrapper=new THREE.Group();wrapper.add(gltf.scene);wrapper.scale.setScalar(1/Math.max(size.x,size.y,size.z,1e-5));
+@@ -128,6 +135,27 @@ export class GlobeKit {
+     this.key.position.copy(this.camera.position).add(new THREE.Vector3(-2,3,1));
+     for(const {r,meshes} of this.routeItems){const p=THREE.MathUtils.clamp((this.time-r.start)/(r.end-r.start),0,1);for(const m of meshes)m.geometry.setDrawRange(0,Math.floor(160*p)*6*6);}
+     for(const {o,m} of this.objectItems){
++      if(o.type==='bird'){
++        const a=geo(...o.from),b=geo(...o.to);
++        const dot=THREE.MathUtils.clamp(a.dot(b),-1,1),ang=Math.acos(dot);
++        const t0=o.start??0,t1=o.end??c.duration;
++        const ft=t1>t0?THREE.MathUtils.clamp((this.time-t0)/(t1-t0),0,1):1;
++        const f=(o.f0??0)+((o.f1??1)-(o.f0??0))*ft;
++        const pos=ff=>{
++          let p;if(ang<1e-6)p=a.clone();
++          else p=a.clone().multiplyScalar(Math.sin((1-ff)*ang)/Math.sin(ang)).add(b.clone().multiplyScalar(Math.sin(ff*ang)/Math.sin(ang)));
++          return p.normalize().multiplyScalar(1+o.altitude+0.0022*Math.sin(this.time*5));};
++        const p=pos(f);m.position.copy(p);
++        const back=f>=0.999,f2=back?f-0.004:f+0.004;
++        const s0=p.clone().project(this.camera),s1=pos(f2).project(this.camera);
++        let rot=Math.atan2(s1.y-s0.y,s1.x-s0.x)+(back?Math.PI:0);
++        const [su,sd]=m.userData.birdSprites;
++        su.material.rotation=rot;sd.material.rotation=rot;
++        const flap=o.flap??0;
++        if(flap>0){const k=Math.floor(this.time*flap)%2;su.visible=k===0;sd.visible=k===1;}else{su.visible=true;sd.visible=false;}
++        m.userData.mixer?.setTime(this.time);
++        continue;
++      }
+       const lon=o.lon+(o.orbitSpeed??0)*this.time,lat=o.lat+Math.sin((lon-o.lon)*D)*(o.inclination??0);
+       const n=geo(lat,lon);m.position.copy(n).multiplyScalar(1+o.altitude);
+       m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),n);

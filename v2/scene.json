@@ -1,0 +1,10 @@
+{
+  "version":2,
+  "name":"Globe Lite",
+  "width":1920,
+  "height":1080,
+  "duration":3,
+  "camera":{"lat":9,"lon":118,"altitudeKm":16000},
+  "style":{"land":"#91bb7b","ocean":"#214c77","atmosphere":"#78b9ff","background":"#07111c","halo":0.7,"coast":0.35,"transparent":false},
+  "keyframes":[]
+}

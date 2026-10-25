@@ -4,7 +4,7 @@ import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 
 export const root = fileURLToPath(new URL('../', import.meta.url));
-const mime = {'.html':'text/html; charset=utf-8','.css':'text/css','.js':'text/javascript','.mjs':'text/javascript','.json':'application/json','.jpg':'image/jpeg','.png':'image/png','.svg':'image/svg+xml','.glb':'model/gltf-binary','.gltf':'model/gltf+json','.bin':'application/octet-stream','.mp4':'video/mp4','.woff2':'font/woff2'};
+const mime = {'.html':'text/html; charset=utf-8','.md':'text/plain; charset=utf-8','.css':'text/css','.js':'text/javascript','.mjs':'text/javascript','.json':'application/json','.jpg':'image/jpeg','.png':'image/png','.svg':'image/svg+xml','.glb':'model/gltf-binary','.gltf':'model/gltf+json','.bin':'application/octet-stream','.mp4':'video/mp4','.woff2':'font/woff2'};
 export function createServer() {
   return http.createServer(async (req,res) => {
     try {

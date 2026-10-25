@@ -5,8 +5,9 @@ import {makeSatellite,makeShip} from './models.js';
 import {ElevationStore,ELEVATION_GLSL,seaLevelAt,EARTH_KM} from './elevation.js';
 import {DetailLayer} from './detail.js';
 import {drawProfile} from './profile.js';
+import {geo,coordinates,reference,RouteCurve,objectPose,orientTraveller,followAt} from './motion.js';
 const D=Math.PI/180;
-export const geo=(lat,lon,r=1)=>new THREE.Vector3(Math.cos(lat*D)*Math.cos(lon*D)*r,Math.sin(lat*D)*r,-Math.cos(lat*D)*Math.sin(lon*D)*r);
+export {geo};
 const vertex=`varying vec2 vUv;varying vec2 vGeo;varying vec3 vN;varying vec3 vV;varying vec3 vWorld;
 #ifdef USE_GEO_UV
 attribute vec2 geoUv;
@@ -43,7 +44,7 @@ void main(){
 const airFragment=`uniform vec3 uColor;uniform vec3 uCam;uniform float uStrength;varying vec3 vWorld;void main(){vec3 ray=normalize(vWorld-uCam);float b=length(cross(ray,uCam));if(b<.999)discard;float alpha=exp(-max(0.0,b-1.0)*58.0)*smoothstep(1.085,1.01,b)*uStrength;gl_FragColor=vec4(uColor,alpha);
 #include <colorspace_fragment>
 }`;
-function disposeGroup(g){g.traverse(o=>{o.geometry?.dispose();if(o.material){for(const m of Array.isArray(o.material)?o.material:[o.material])m.dispose();}});g.clear();}
+function disposeGroup(g){const textures=new Set();g.traverse(o=>{o.userData.mixer?.stopAllAction();for(const t of o.userData.ownedTextures??[])textures.add(t);o.geometry?.dispose();if(o.material){for(const m of Array.isArray(o.material)?o.material:[o.material])m.dispose();}});textures.forEach(t=>t.dispose());g.clear();}
 export class GlobeKit {
   constructor(canvas){
     this.canvas=canvas;this.ctx=canvas.getContext('2d');this.config=null;this.time=0;this.assets=new Map();this.objectItems=[];this.routeItems=[];
@@ -74,64 +75,91 @@ export class GlobeKit {
       await this.elevation.load();const [global,regional]=this.elevation.grids,u=this.material.uniforms;
       u.uDemGlobal.value=global.texture;u.uDemRegional.value=regional.texture;u.uDemSize.value.set(global.meta.width,global.meta.height);u.uRegionalSize.value.set(regional.meta.width,regional.meta.height);
     }
-    const loaded=await Promise.all(c.objects.map(async o=>{
+    const results=await Promise.allSettled(c.objects.map(async o=>{
       if(o.type==='satellite')return makeSatellite();if(o.type==='ship')return makeShip();
+      if(['sprite','bird'].includes(o.type)){
+        const frames=await Promise.all(o.frames.map(file=>this.loadTexture(file)));
+        const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:frames[0],transparent:true,depthWrite:false}));
+        if(o.aspect!==undefined)sprite.scale.set(o.aspect,1,1);
+        const holder=new THREE.Group();holder.add(sprite);holder.userData.sprite=sprite;holder.userData.frames=frames;return holder;
+      }
       const gltf=await new GLTFLoader().loadAsync(localAsset(o.asset));
       const box=new THREE.Box3().setFromObject(gltf.scene),center=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());
       gltf.scene.position.sub(center);const wrapper=new THREE.Group();wrapper.add(gltf.scene);wrapper.scale.setScalar(1/Math.max(size.x,size.y,size.z,1e-5));
-      const outer=new THREE.Group();outer.add(wrapper);outer.userData.mixer=new THREE.AnimationMixer(gltf.scene);if(gltf.animations.length)outer.userData.mixer.clipAction(gltf.animations[0]).play();return outer;
+      const outer=new THREE.Group();outer.add(wrapper);outer.userData.mixer=new THREE.AnimationMixer(gltf.scene);
+      const textures=new Set();gltf.scene.traverse(node=>{for(const m of Array.isArray(node.material)?node.material:node.material?[node.material]:[])for(const value of Object.values(m))if(value?.isTexture)textures.add(value);});outer.userData.ownedTextures=[...textures];
+      if(gltf.animations.length){const clip=o.animationClip===undefined?gltf.animations[0]:typeof o.animationClip==='number'?gltf.animations[o.animationClip]:gltf.animations.find(clip=>clip.name===o.animationClip);if(!clip){disposeGroup(outer);throw new Error(`Clip GLB tidak ditemukan: ${o.animationClip}`);}outer.userData.mixer.clipAction(clip).play();}
+      else if(o.animationClip!==undefined){disposeGroup(outer);throw new Error('GLB ini tidak memiliki clip animasi.');}
+      return outer;
     }));
-    if(token!==this.loadId){for(const m of loaded)disposeGroup(m);return null;}
+    const loaded=results.filter(result=>result.status==='fulfilled').map(result=>result.value),failure=results.find(result=>result.status==='rejected');
+    if(token!==this.loadId||failure){for(const m of loaded)disposeGroup(m);if(token!==this.loadId)return null;throw failure.reason;}
     this.config=c;this.material.uniforms.uMap.value=texture;
     const s=c.style,u=this.material.uniforms;u.uExposure.value=s.exposure;u.uSaturation.value=s.saturation;u.uOceanMix.value=s.oceanMix;u.uFill.value=s.fill;u.uOcean.value.set(s.ocean);u.uAir.value.set(s.atmosphere);
     this.air.children.forEach(shell=>{shell.material.uniforms.uColor.value.set(s.atmosphere);shell.material.uniforms.uStrength.value=.9*s.halo;});
     disposeGroup(this.routeGroup);disposeGroup(this.objects);this.routeItems=[];this.objectItems=[];
     for(const r of c.routes){
-      const a=geo(...r.from),b=geo(...r.to),dot=THREE.MathUtils.clamp(a.dot(b),-1,1),angle=Math.acos(dot);const points=[];
-      // Unit-sphere interpolation takes the shortest route across the dateline.
-      for(let i=0;i<=160;i++){const t=i/160;let p;
-        if(angle<1e-6)p=a.clone();else if(Math.PI-angle<1e-4){const axis=new THREE.Vector3(0,1,0).cross(a);if(axis.lengthSq()<.01)axis.set(1,0,0).cross(a);p=a.clone().applyAxisAngle(axis.normalize(),Math.PI*t);}
-        else p=a.clone().multiplyScalar(Math.sin((1-t)*angle)/Math.sin(angle)).add(b.clone().multiplyScalar(Math.sin(t*angle)/Math.sin(angle)));
-        points.push(p.normalize().multiplyScalar(1+r.altitude));
-      }
-      const curve=new THREE.CatmullRomCurve3(points);
+      const curve=new RouteCurve(r);
       const meshes=[];
-      for(const [radius,opacity] of [[.007,.13],[.0022,1]]){
+      const lineWidth=r.width??.0022;
+      for(const [radius,opacity] of [[lineWidth*3.18,.13],[lineWidth,1]]){
         const mesh=new THREE.Mesh(new THREE.TubeGeometry(curve,160,radius,6,false),new THREE.MeshBasicMaterial({color:r.color,transparent:true,opacity,depthWrite:false}));
         this.routeGroup.add(mesh);meshes.push(mesh);
       }
-      this.routeItems.push({r,meshes});
+      this.routeItems.push({r,meshes,curve});
     }
-    c.objects.forEach((o,i)=>{const m=loaded[i];m.scale.setScalar(o.scale);this.objects.add(m);this.objectItems.push({o,m});});
+    c.objects.forEach((o,i)=>{const m=loaded[i],size=new THREE.Box3().setFromObject(m).getSize(new THREE.Vector3());const extent=Math.max(size.x,size.y,size.z,1e-6);m.scale.setScalar(o.scale);this.objects.add(m);this.objectItems.push({o,m,extent});});
     this.setTime(Math.min(this.time,c.duration));return this.getConfig();
   }
   getConfig(){return structuredClone(this.config);}
   resize(w,h){this.canvas.width=w;this.canvas.height=h;this.renderer.setSize(w,h,false);this.camera.aspect=w/h;this.camera.updateProjectionMatrix();this.render();}
   setTime(seconds){this.time=Math.min(this.config?.duration??0,Math.max(0,seconds));this.render();return this.time;}
-  async prepareFrame(seconds){this.setTime(seconds);await this.detailLayer.ready;this.render();return this.time;}
-  getCamera(){return cameraAt(this.config,this.time);}
+  async prepareFrame(seconds){this.setTime(seconds);await this.detailLayer.waitForReady(this.config.detail.failureMode);this.render();return this.time;}
+  poseAt(object,time=this.time){return objectPose(object,this.config.routes,this.routeItems.map(item=>item.curve),time);}
+  getCamera(){const cam=cameraAt(this.config,this.time);if(this.config.camera.follow&&this.camera.position.length()>1)return {...cam,...coordinates(this.camera.position),altitudeKm:(this.camera.position.length()-1)*EARTH_KM,pitch:0};return cam;}
   render(){
     const c=this.config;if(!c)return;const {width:w,height:h}=this.canvas;if(!w||!h)return;
     const cam=cameraAt(c,this.time),aspect=w/h;
     const fit=Math.sqrt(1+1/(Math.tan(21*D)*Math.min(aspect,1)*.94)**2);
-    const radius=cam.altitudeKm!==undefined?1+cam.altitudeKm/EARTH_KM:Math.max(1.12,fit/cam.zoom);
+    let radius=cam.altitudeKm!==undefined?1+cam.altitudeKm/EARTH_KM:Math.max(1.12,fit/cam.zoom);
     this.camera.position.copy(geo(cam.lat,cam.lon,radius));
     this.camera.up.set(0,1,0);
     if(cam.altitudeKm!==undefined&&(cam.pitch??0)>0){const n=geo(cam.lat,cam.lon),north=geo(cam.lat+.01,cam.lon).sub(n).normalize();this.camera.position.addScaledVector(north,-(radius-1)*Math.tan(cam.pitch*D));this.camera.lookAt(n);}else this.camera.lookAt(0,0,0);
-    this.camera.near=Math.max(.00000001,Math.min(.01,(radius-1)*.02));this.camera.updateProjectionMatrix();this.camera.rotateZ(cam.roll*D);this.camera.updateMatrixWorld();
-    this.detailLayer.update(c.detail.enabled&&!c.effects.profile.enabled,cam,c.width,c.height,c.detail.maxLevel);
+    let nearDistance=radius-1;
+    if(c.camera.follow){
+      const f=followAt(c.camera.follow,this.time),o=reference(c.objects,f.object),pose=this.poseAt(o),ahead=this.poseAt(o,this.time+f.lookAheadSeconds);
+      const distance=f.distanceKm/EARTH_KM;
+      this.camera.position.copy(pose.position).addScaledVector(pose.normal,distance*Math.cos(f.pitch*D)).addScaledVector(pose.tangent,-distance*Math.sin(f.pitch*D));
+      const north=new THREE.Vector3(0,1,0).projectOnPlane(pose.normal);if(north.lengthSq()<1e-8)north.set(1,0,0).projectOnPlane(pose.normal);north.normalize();
+      this.camera.up.copy(f.heading==='route'?pose.tangent:north);this.camera.lookAt(ahead.position);
+      nearDistance=Math.min(distance,this.camera.position.length()-1);radius=this.camera.position.length();
+    }
+    this.camera.near=Math.max(.00000001,Math.min(.01,nearDistance*.02));this.camera.updateProjectionMatrix();this.camera.rotateZ(cam.roll*D);this.camera.updateMatrixWorld();
+    const ground=coordinates(this.camera.position);
+    this.detailLayer.update(c.detail.enabled&&!c.effects.profile.enabled,{...ground,altitudeKm:(radius-1)*EARTH_KM,pitch:cam.pitch??0},w,h,c.detail.maxLevel,this.camera);
     const u=this.material.uniforms;
     u.uElevationEnabled.value=(c.effects.seaLevel.enabled||c.effects.surface==='atlas'||c.effects.waves>0)&&this.elevation.grids.length?1:0;
     u.uSeaEnabled.value=c.effects.seaLevel.enabled?1:0;u.uSeaLevel.value=seaLevelAt(c,this.time);u.uSurface.value=c.effects.surface==='atlas'?1:0;u.uWaves.value=c.effects.waves;u.uTime.value=this.time;
     if(c.effects.profile.enabled){drawProfile(this.ctx,w,h,c,this.elevation,this.time);this.canvas.dataset.frame=String(Math.round(this.time*c.fps));this.canvas.dataset.ready='true';return;}
     for(const shell of this.air.children)shell.material.uniforms.uCam.value.copy(this.camera.position);
     this.key.position.copy(this.camera.position).add(new THREE.Vector3(-2,3,1));
-    for(const {r,meshes} of this.routeItems){const p=THREE.MathUtils.clamp((this.time-r.start)/(r.end-r.start),0,1);for(const m of meshes)m.geometry.setDrawRange(0,Math.floor(160*p)*6*6);}
-    for(const {o,m} of this.objectItems){
-      const lon=o.lon+(o.orbitSpeed??0)*this.time,lat=o.lat+Math.sin((lon-o.lon)*D)*(o.inclination??0);
-      const n=geo(lat,lon);m.position.copy(n).multiplyScalar(1+o.altitude);
-      m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),n);
-      m.userData.mixer?.setTime(this.time);
+    for(const [i,{meshes}] of this.routeItems.entries()){const r=c.routes[i],p=THREE.MathUtils.clamp((this.time-r.start)/(r.end-r.start),0,1);for(const m of meshes){m.visible=r.visible!==false;m.geometry.setDrawRange(0,Math.floor(160*p)*6*6);}}
+    for(const [i,{m,extent}] of this.objectItems.entries()){
+      const o=c.objects[i];
+      const pose=this.poseAt(o);m.position.copy(pose.position);
+      if(o.followRoute?.orient!==false&&o.followRoute)orientTraveller(m,pose,o.rotation);
+      else {m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),pose.normal);if(o.rotation)m.quaternion.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(...o.rotation.map(v=>v*D))));}
+      let scale=o.scale;
+      if(o.screenSize!==undefined){const depth=-pose.position.clone().applyMatrix4(this.camera.matrixWorldInverse).z;scale=Math.max(0,2*depth*Math.tan(21*D)*o.screenSize/extent);}
+      m.scale.setScalar(scale);
+      m.userData.mixer?.setTime((this.time+(o.animationOffset??0))*(o.animationSpeed??1));
+      if(m.userData.sprite){
+        const {sprite,frames}=m.userData,index=Math.floor((this.time+(o.animationOffset??0))*(o.frameRate??4)*(o.animationSpeed??1))%frames.length;
+        sprite.material.map=frames[index];const image=frames[index].image;if(o.aspect!==undefined)sprite.scale.set(o.aspect,1,1);else sprite.scale.set(image.width/Math.max(image.width,image.height),image.height/Math.max(image.width,image.height),1);
+        const p=pose.position.clone().project(this.camera),q=pose.position.clone().addScaledVector(pose.tangent,.001).project(this.camera);
+        // Sprite artwork faces right at zero degrees; rotate its screen tangent, not its billboard quaternion.
+        sprite.material.rotation=Math.atan2((q.y-p.y)*h,(q.x-p.x)*w)+(o.rotation?.[2]??0)*D;
+      }
     }
     this.renderer.setClearColor(c.background,c.transparent?0:1);this.renderer.render(this.scene,this.camera);
     const ctx=this.ctx;ctx.clearRect(0,0,w,h);ctx.drawImage(this.renderer.domElement,0,0);

@@ -1,0 +1,20 @@
+{
+  "locations": [
+    {"id":"globe","name":"Globe","lat":9,"lon":118,"altitudeKm":16000},
+    {"id":"indonesia","name":"Indonesia","lat":-3,"lon":118,"altitudeKm":5800},
+    {"id":"sumatra","name":"Sumatra","lat":-0.5,"lon":101.5,"altitudeKm":2100},
+    {"id":"jawa","name":"Jawa","lat":-7.4,"lon":110.1,"altitudeKm":1650},
+    {"id":"bali","name":"Bali","lat":-8.37,"lon":115.13,"altitudeKm":480},
+    {"id":"lombok","name":"Lombok","lat":-8.58,"lon":116.28,"altitudeKm":420},
+    {"id":"kalimantan","name":"Kalimantan","lat":0.4,"lon":114,"altitudeKm":1800},
+    {"id":"sulawesi","name":"Sulawesi","lat":-2.1,"lon":120.7,"altitudeKm":1500},
+    {"id":"maluku","name":"Maluku","lat":-3.2,"lon":128.5,"altitudeKm":1600},
+    {"id":"papua","name":"Papua","lat":-4.6,"lon":138.5,"altitudeKm":2200}
+  ],
+  "palettes": [
+    {"id":"atlas","name":"Atlas","land":"#91bb7b","ocean":"#214c77","atmosphere":"#78b9ff","background":"#07111c"},
+    {"id":"mint","name":"Mint","land":"#b0dbc6","ocean":"#235664","atmosphere":"#9ce7da","background":"#08161b"},
+    {"id":"sand","name":"Sand","land":"#d6bf8d","ocean":"#315875","atmosphere":"#91bcdb","background":"#10151b"},
+    {"id":"mono","name":"Mono","land":"#d3dbe4","ocean":"#2a394d","atmosphere":"#b5cbe5","background":"#0b1018"}
+  ]
+}
