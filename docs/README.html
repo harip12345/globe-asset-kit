@@ -1,0 +1,57 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Panduan — Atlas Globe Kit</title><style>body{margin:50px auto;max-width:850px;padding:0 24px;background:#0c1017;color:#d9e4f3;font:15px/1.8 Arial,sans-serif}h1,h2{line-height:1.3;color:#fff}h1{font-size:34px}h2{font-size:21px;margin-top:40px}a{color:#a2c7ff}code,pre{font-family:Consolas,monospace;background:#172131;border-radius:5px}code{padding:3px 6px}pre{padding:20px;overflow:auto;font-size:13px;line-height:1.65}table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:12px;border-bottom:1px solid #2a3546;text-align:left;vertical-align:top}.note{padding:16px 20px;background:#172131;border-left:3px solid #8ebaff}.muted{color:#94a5bc}img{max-width:100%}</style></head><body>
+<a href="../">← Kembali ke editor</a><p class="muted">ATLAS / REUSABLE VIDEO ASSETS</p><h1>Satu sistem visual.<br>Bisa diedit untuk topik berikutnya.</h1>
+<p>Paket ini merekonstruksi karakter globe pada referensi: tekstur satelit, relief dasar laut, atmosfer biru, latar gelap, label geografis, dan gerakan kamera halus. Sumber master adalah kode + JSON + tekstur lokal. HTML menyediakan preview dan kontrol.</p>
+<p class="note">Ini implementasi Three.js yang dibuat agar editable oleh AI agent. Ini bukan proyek native After Effects/GEOlayers/VC Orb. Aplikasi/plugin tersebut tidak tersedia pada komputer saat paket dibuat. Kemiripan visual belum berarti identik piksel demi piksel.</p>
+<h2>Mulai menggunakan</h2><ol><li>Buka <code>start.cmd</code> dan biarkan terminalnya menyala. Alternatif: jalankan <code>npm start</code> dari folder proyek.</li><li>Buka <a href="http://127.0.0.1:4173">http://127.0.0.1:4173</a> di browser.</li><li>Pilih preset, atur tampilan, kamera, atau konten. Drag globe untuk memutar, scroll untuk zoom.</li><li>Gunakan <strong>Unduh PNG</strong> untuk gambar pada resolusi scene. Aktifkan latar transparan untuk overlay.</li><li>Gunakan <strong>Simpan JSON</strong> untuk menyimpan perubahan. Perubahan editor tidak otomatis menimpa file sumber.</li></ol>
+<p>Jika folder dipindahkan tanpa <code>node_modules</code>, jalankan <code>npm ci</code> terlebih dahulu. Setelah dependensi tersedia, editor dan tekstur dapat digunakan offline. Node.js diperlukan untuk server lokal.</p>
+<h2>Preset yang tersedia</h2><table><tr><th>Scene</th><th>Penggunaan</th></tr><tr><td>pasifik</td><td>Globe Pasifik bergaya referensi, label Papua dan California, 12 detik.</td></tr><tr><td>indonesia</td><td>Globe diperbesar ke wilayah Indonesia, 10 detik. Bukan zoom citra sampai pantai.</td></tr><tr><td>rute</td><td>Jalur bercahaya dari Papua menuju California; ilustrasi geografis, bukan data pelacakan hewan.</td></tr><tr><td>orbit</td><td>Model satelit ilustrasi mengorbit; ukuran dan gerakan tidak berskala fisik.</td></tr></table>
+<h2>Mengedit melalui AI agent</h2><p>Berikan seluruh folder proyek kepada agent dan minta membaca <code>AGENTS.md</code>. Untuk mengganti topik, duplikasikan JSON dalam <code>scenes/</code>. Tidak perlu menggambar ulang bumi atau mengubah shader.</p>
+<pre>Gunakan Globe Kit ini. Baca AGENTS.md.
+Duplikasikan scenes/rute.json menjadi scenes/indonesia-jepang.json.
+Fokus kamera ke Asia Timur. Buat rute Jakarta ke Tokyo.
+Pertahankan style, tekstur bumi, dan atmosfer referensi.
+Gunakan durasi 10 detik, portrait 1080 × 1920, 30 fps.
+Ekspor PNG dan MP4. Jangan ubah scene asli.</pre>
+<h2>Struktur scene JSON</h2><table><tr><th>Properti</th><th>Arti</th></tr><tr><td>version</td><td>Versi schema: 1.</td></tr><tr><td>name, duration, fps</td><td>Nama, durasi dalam detik, frame per detik.</td></tr><tr><td>width, height</td><td>Resolusi hasil; 1080×1920, 1920×1080, atau ukuran lain hingga 4096.</td></tr><tr><td>texture</td><td>Path lokal dalam folder assets/. Tekstur persegi panjang equirectangular 2:1.</td></tr><tr><td>style</td><td>exposure, saturation, ocean, oceanMix, fill, atmosphere, halo.</td></tr><tr><td>camera</td><td>lat, lon, zoom, roll dan keyframes. Jika keyframes kosong, kamera statis.</td></tr><tr><td>labels</td><td>Array objek {text, lat, lon, color}.</td></tr><tr><td>routes</td><td>Array {from:[lat,lon], to:[lat,lon], color, start, end, altitude}.</td></tr><tr><td>objects</td><td>Array {type, lat, lon, altitude, scale, orbitSpeed, inclination}; type: satellite, ship, glb. Model glb juga memerlukan asset.</td></tr><tr><td>title, subtitle</td><td>Teks opsional. Kosongkan untuk aset bersih.</td></tr><tr><td>background, transparent</td><td>Warna latar #RRGGBB dan pilihan alpha.</td></tr></table>
+<p>Koordinat memakai <strong>[latitude, longitude]</strong> dalam derajat. Utara/timur positif. Altitude relatif terhadap radius bumi: <code>0.025</code> berarti 2,5% radius di atas permukaan. Ini satuan komposisi visual, bukan kilometer.</p>
+<pre>"camera": {
+  "lat": 19, "lon": -168, "zoom": 1, "roll": 0,
+  "keyframes": [
+    {"time": 0, "lat": 19, "lon": -168, "zoom": 0.96},
+    {"time": 12, "lat": 23, "lon": -158, "zoom": 1.06}
+  ]
+}</pre>
+<p>Keyframe diurutkan menurut waktu. Kamera mengambil lintasan longitude terpendek, termasuk melintasi garis tanggal. Gerak dihitung langsung dari waktu absolut agar frame ekspor konsisten. Menggeser kontrol kamera di editor mengubah shot menjadi statis; gunakan tombol orbit untuk membuat gerakan baru.</p>
+<h2>Menambahkan model penyu atau objek lain</h2><p>Simpan model GLB tidak terkompresi beserta tekstur tertanam ke <code>assets/models/</code>. Draco/KTX2 dan decoder eksternal belum dikonfigurasi. Contoh:</p><pre>"objects": [{
+  "type": "glb", "asset": "assets/models/penyu.glb",
+  "lat": -0.8, "lon": 133.2,
+  "altitude": 0.03, "scale": 0.09,
+  "orbitSpeed": 0, "inclination": 0
+}]</pre><p>Model otomatis dinormalisasi berdasarkan dimensi terbesarnya. Local Y diarahkan menjauhi pusat bumi. Aset mungkin perlu orientasi tambahan sesuai pembuatannya. Animasi embedded dapat diputar berdasarkan waktu. Model penyu realistis belum disertakan; kapal dan satelit bawaan adalah model ilustrasi yang dibuat di kode.</p>
+<h2 id="render">Ekspor bahan video</h2><p>PNG dapat diekspor dari editor tanpa tool tambahan. Ekspor otomatis menggunakan Playwright/Chromium dan FFmpeg. Pada komputer ini renderer memakai runtime yang tersedia. Untuk komputer lain:</p><pre>npm install --save-dev playwright
+npx playwright install chromium
+# Install FFmpeg dari ffmpeg.org, lalu pastikan ffmpeg ada di PATH.</pre>
+<p>Perintah dijalankan dari folder proyek. Server render sementara dijalankan otomatis lalu ditutup.</p><pre># PNG resolusi penuh pada detik ke-4
+node scripts/render.mjs --scene pasifik --format png --time 4 --out exports/globe.png
+
+# PNG transparan
+node scripts/render.mjs --scene pasifik --format png --transparent --out exports/globe-alpha.png
+
+# Video MP4, 1080 × 1920, 30 fps, durasi sesuai scene
+node scripts/render.mjs --scene rute --format mp4 --out exports/rute.mp4
+
+# Preview lebih ringan
+node scripts/render.mjs --scene rute --format mp4 --width 720 --height 1280 --out exports/preview.mp4
+
+# PNG sequence dengan alpha untuk After Effects / editor lain
+node scripts/render.mjs --scene pasifik --format frames --transparent --out exports/pasifik-frames
+
+# Scene baru dari AI agent
+node scripts/render.mjs --scene scenes/indonesia-jepang.json --format mp4 --out exports/indonesia-jepang.mp4</pre>
+<p>MP4/H.264 tidak menyimpan alpha. Untuk layer transparan, gunakan PNG sequence. Frame dimulai pada t=0 dan berakhir satu frame sebelum durasi. Ekspor tidak menyertakan suara. File <code>.render.json</code> disimpan bersama hasil agar konfigurasi render dapat dilacak. Override tersedia: <code>--width</code>, <code>--height</code>, <code>--fps</code>, <code>--seconds</code>, <code>--time</code>, <code>--transparent</code>. Render lebih lama daripada durasi scene akan mempertahankan frame terakhir.</p>
+<p>Jika Chromium tidak ditemukan: gunakan <code>GLOBE_CHROMIUM_PATH</code>. Untuk runtime Playwright alternatif: <code>GLOBE_PLAYWRIGHT_PATH</code>. Untuk FFmpeg alternatif: <code>FFMPEG_PATH</code>. Kecepatan render bergantung pada GPU/CPU dan resolusi.</p>
+<h2>Hubungan dengan After Effects, GEOlayers dan VC Orb</h2><p>PNG, PNG sequence, dan MP4 dari paket ini bisa dimasukkan ke After Effects sebagai bahan video. <a href="../after-effects/import-render.jsx">Script import-render.jsx</a> membantu membuat komposisi dari hasil render. Tekstur NASA juga dapat dipakai sebagai sumber tekstur pada workflow globe native.</p><p>GEOlayers dan VC Orb tetap memerlukan instalasi, lisensi yang sesuai, dan pengaturan proyek native. Kode Three.js tidak otomatis berubah menjadi proyek native yang semua propertinya dapat diedit di After Effects. Master editable untuk paket ini tetap kode dan scene JSON.</p>
+<h2>Batas detail geografis</h2><p>Tekstur 5400×2700 cocok untuk globe dan tampilan wilayah. Ini citra komposit historis, bukan citra real-time. Zoom hingga pantai/jalan membutuhkan citra tile resolusi tinggi dan, jika perlu, terrain. Paket ini belum menyediakan integrasi Cesium, Google Earth Studio, atau API citra satelit. Tidak ada janji zoom tanpa batas dari satu tekstur.</p>
+<h2>Sumber dan kredit</h2><p>Tekstur: NASA Earth Observatory, <em>July 2004 Blue Marble Next Generation with Topography and Bathymetry</em>; Blue Marble Next Generation oleh Reto Stöckli. Bathymetry: GEBCO. Lihat <a href="https://visibleearth.nasa.gov/images/73751/july-blue-marble-next-generation-w-topography-and-bathymetry">halaman sumber NASA</a> dan <a href="https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/topography-bathymetry-maps/">informasi topografi/batimetri</a>. Kredit ini disimpan dalam <code>assets/manifest.json</code> agar dapat disertakan dalam kredit video.</p><p>Three.js 0.180.0 berlisensi MIT; salinan lisensi terdapat di <code>node_modules/three/LICENSE</code>. Model satelit dan kapal bawaan dibuat secara prosedural untuk proyek ini. Video referensi digunakan untuk analisis tampilan; video, watermark, dan UI Facebook tidak disalin ke hasil render.</p>
+<p class="muted">Validasi: jalankan <code>npm run check</code>. Setelah mengubah shader, kamera, atau aset, selalu periksa PNG/video hasil render.</p>
+</body></html>

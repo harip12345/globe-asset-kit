@@ -1,0 +1,9 @@
+{
+  "version":1,"name":"Satelit — Orbit illustration","duration":12,"fps":30,"width":1920,"height":1080,
+  "background":"#03080e","transparent":false,"texture":"assets/textures/earth-nasa-5400.jpg",
+  "style":{"exposure":1.2,"saturation":0.9,"ocean":"#25558b","oceanMix":0.55,"fill":0.65,"atmosphere":"#5aa9ff","halo":0.75},
+  "camera":{"lat":13,"lon":115,"zoom":0.78,"roll":0,"keyframes":[{"time":0,"lat":13,"lon":105,"zoom":0.78},{"time":12,"lat":18,"lon":125,"zoom":0.8}]},
+  "labels":[],"routes":[],
+  "objects":[{"type":"satellite","lat":0,"lon":90,"altitude":0.32,"scale":0.11,"orbitSpeed":12,"inclination":25}],
+  "title":"","subtitle":""
+}

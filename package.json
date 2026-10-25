@@ -1,0 +1,16 @@
+{
+  "name": "globe",
+  "version": "1.0.0",
+  "description": "Reusable cinematic satellite globe assets and deterministic video rendering",
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "render": "node scripts/render.mjs",
+    "check": "node scripts/check.mjs"
+  },
+  "keywords": [],
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "three": "0.180.0"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "version":1,"name":"Indonesia — Close globe","duration":10,"fps":30,"width":1080,"height":1920,
+  "background":"#03080e","transparent":false,"texture":"assets/textures/earth-nasa-5400.jpg",
+  "style":{"exposure":1.2,"saturation":0.9,"ocean":"#25558b","oceanMix":0.55,"fill":0.65,"atmosphere":"#5aa9ff","halo":0.75},
+  "camera":{"lat":-3,"lon":120,"zoom":1.65,"roll":0,"keyframes":[{"time":0,"lat":0,"lon":112,"zoom":1.25},{"time":10,"lat":-4,"lon":126,"zoom":1.85}]},
+  "labels":[{"text":"INDONESIA","lat":-4,"lon":118,"color":"#ffffff"},{"text":"PAPUA","lat":-4,"lon":138,"color":"#ffffff"}],
+  "routes":[],"objects":[],"title":"","subtitle":""
+}

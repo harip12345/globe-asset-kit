@@ -1,0 +1,16 @@
+{
+  "date": "2026-10-25",
+  "environment": "Windows, Node.js 24, Chromium 1228, Three.js 0.180.0",
+  "checks": {
+    "sceneValidation": "passed for all four presets",
+    "geoAlignment": "passed: Greenwich and east longitude follow texture coordinates",
+    "cameraDateline": "passed: 179 to -179 takes shortest path",
+    "deterministicTime": "passed",
+    "localAssetRestrictions": "passed",
+    "pngMaster": "1080 x 1920 RGBA",
+    "transparentPNG": "corner alpha 0; Earth center alpha 255; alpha range 0-255",
+    "video": "H.264, 720 x 1280, 30 fps, 360 frames, 12.000 seconds",
+    "browser": "preset switch and timeline scrub checked; globe, blue atmospheric rim, route and satellite renders visually inspected"
+  },
+  "limitations": ["Native After Effects/GEOlayers/VC Orb was unavailable; no native plugin project validation", "No coast-level imagery integration", "No realistic turtle asset", "Reference similarity is qualitative, not pixel-identical"]
+}

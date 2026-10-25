@@ -1,0 +1,8 @@
+node_modules/
+exports/
+analysis-frames/
+*.zip
+*.log
+.env
+.env.*
+!.env.example

@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "name": "Pasifik — Reference look",
+  "duration": 12,
+  "fps": 30,
+  "width": 1080,
+  "height": 1920,
+  "background": "#03080e",
+  "transparent": false,
+  "texture": "assets/textures/earth-nasa-5400.jpg",
+  "style": {"exposure": 1.2, "saturation": 0.9, "ocean": "#25558b", "oceanMix": 0.55, "fill": 0.65, "atmosphere": "#5aa9ff", "halo": 0.75},
+  "camera": {"lat": 19, "lon": -168, "zoom": 1, "roll": 0, "keyframes": [{"time":0,"lat":19,"lon":-168,"zoom":0.96},{"time":12,"lat":23,"lon":-158,"zoom":1.06}]},
+  "labels": [{"text":"PAPUA","lat":-0.8,"lon":133.2,"color":"#ffffff"},{"text":"CALIFORNIA","lat":36.8,"lon":-121.5,"color":"#ffffff"}],
+  "routes": [],
+  "objects": [],
+  "title": "",
+  "subtitle": ""
+}

@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "name": "Laut menyurut — Bali–Lombok",
+  "duration": 10,
+  "fps": 30,
+  "width": 1080,
+  "height": 1920,
+  "background": "#03080e",
+  "transparent": false,
+  "texture": "assets/textures/earth-nasa-5400.jpg",
+  "style": {
+    "exposure": 1.2,
+    "saturation": 0.9,
+    "ocean": "#25558b",
+    "oceanMix": 0.55,
+    "fill": 0.65,
+    "atmosphere": "#5aa9ff",
+    "halo": 0.75
+  },
+  "camera": {
+    "lat": -8.55,
+    "lon": 115.75,
+    "zoom": 1,
+    "roll": 0,
+    "altitudeKm": 450,
+    "pitch": 0,
+    "keyframes": []
+  },
+  "labels": [
+    {
+      "text": "BALI",
+      "lat": -8.42,
+      "lon": 115.15,
+      "color": "#ffffff"
+    },
+    {
+      "text": "LOMBOK",
+      "lat": -8.5,
+      "lon": 116.3,
+      "color": "#ffffff"
+    },
+    {
+      "text": "NUSA PENIDA",
+      "lat": -8.74,
+      "lon": 115.54,
+      "color": "#ffffff"
+    }
+  ],
+  "routes": [],
+  "objects": [],
+  "title": "",
+  "subtitle": "",
+  "effects": {
+    "surface": "atlas",
+    "waves": 0,
+    "seaLevel": {
+      "enabled": true,
+      "level": 0,
+      "keyframes": [
+        {
+          "time": 0,
+          "value": 0
+        },
+        {
+          "time": 10,
+          "value": -120
+        }
+      ]
+    },
+    "profile": {
+      "enabled": false,
+      "from": [
+        -8.55,
+        115.35
+      ],
+      "to": [
+        -8.55,
+        116.35
+      ],
+      "fromLabel": "BALI",
+      "toLabel": "LOMBOK",
+      "maxDepth": 2000
+    }
+  },
+  "detail": {
+    "enabled": false,
+    "maxLevel": 18
+  },
+  "animationPreset": "sea-drain"
+}

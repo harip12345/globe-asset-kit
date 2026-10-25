@@ -1,0 +1,14 @@
+{
+  "width": 211,
+  "height": 85,
+  "west": 114.0,
+  "east": 117.5,
+  "south": -9.200000000000003,
+  "north": -7.799999999999997,
+  "offset": 12000,
+  "units": "metres relative to mean sea level",
+  "source": "NOAA NGDC ETOPO1, ice-surface, grid registered",
+  "minElevation": -3832.0,
+  "maxElevation": 3180.0,
+  "spacingDegrees": 0.01666666666665151
+}
